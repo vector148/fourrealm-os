@@ -1,0 +1,7 @@
+# ADR directory
+
+Architecture Decision Records live here. Add one when a decision affects module boundaries, infrastructure choices, data flow, or long-term maintainability.
+
+## Naming convention
+
+`NNNN-short-title.md` — zero-padded four-digit index, e.g. `0001-use-express-for-server.md`.
