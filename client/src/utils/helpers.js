@@ -13,7 +13,7 @@ export function escapeHtml(str) {
 }
 
 export function getYear(item) {
-  const candidates = [item?.year, item?.releaseDate, item?.date, item?.complete, item?.purchase];
+  const candidates = [item?.releaseDate, item?.date, item?.completionDate, item?.purchase];
   for (const v of candidates) {
     const m = String(v || "").match(/(19|20)\d{2}/);
     if (m) return m[0];
@@ -53,7 +53,7 @@ export function normalizeGame(row) {
     id: row.id ?? "",
     title: String(row.title || "").trim(),
     originalTitle: String(row.originalTitle || row.original_title || "").trim(),
-    year: String(row.year || "").trim(),
+    releaseDate: String(row.releaseDate || "").trim(),
     played: row.played === true || String(row.played).toLowerCase() === "true",
     gameplay: String(row.gameplay || "Discovery").trim(),
     subcategory: String(row.subcategory || "").trim(),
@@ -61,7 +61,7 @@ export function normalizeGame(row) {
     status: String(row.status || "active").toLowerCase().trim(),
     date: String(row.date || "").trim(),
     purchase: String(row.purchase || "").trim(),
-    complete: String(row.complete || "").trim(),
+    completionDate: String(row.completionDate || "").trim(),
     rank: row.rank ? Number(row.rank) : null,
     cover: String(row.cover || "").trim(),
     trailer: String(row.trailer || "").trim(),
@@ -75,7 +75,7 @@ export function normalizeFilm(row) {
   return {
     id: row.id ?? "",
     title: String(row.title || "").trim(),
-    year: String(row.year || "").trim(),
+    releaseDate: String(row.releaseDate || "").trim(),
     watched: row.watched === true || String(row.watched).toLowerCase() === "true",
     affect: String(row.affect || "Drama").trim(),
     score: row.score === "" || row.score == null ? null : Number(row.score),

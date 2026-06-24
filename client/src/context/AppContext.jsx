@@ -7,7 +7,7 @@ export function AppProvider({ children }) {
   const [tab, setTab] = useState("games");         // "games" | "films" | "series" | "music"
   const [view, setView] = useState("library");     // "library" | "planning" | "history" | "ranking"
   const [filter, setFilter] = useState(DEFAULT_FILTER);
-  const [ranking, setRanking] = useState({ pillar: "all", year: "all" });
+  const [ranking, setRanking] = useState({ pillar: "all", releaseDate: "all" });
   const [toast, setToast] = useState({ msg: "", show: false });
   const toastTimer = useRef(null);
 
@@ -21,7 +21,7 @@ export function AppProvider({ children }) {
     setTab(newTab);
     setView("library");
     setFilter(DEFAULT_FILTER);
-    setRanking({ pillar: "all", year: "all" });
+    setRanking({ pillar: "all", releaseDate: "all" });
   }, []);
 
   const switchView = useCallback((newView) => {
@@ -45,4 +45,3 @@ export function AppProvider({ children }) {
 export function useApp() {
   return useContext(AppContext);
 }
-

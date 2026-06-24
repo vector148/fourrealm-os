@@ -30,8 +30,17 @@ export function applyFilters(items, { query = "", status = "all", pillar = "all"
     );
   }
 
-  // Sort by year descending
+  // Sort by exact releaseDate descending, fallback to year
   result = result.sort((a, b) => {
+    const dateA = a.releaseDate ? new Date(a.releaseDate).getTime() : 0;
+    const dateB = b.releaseDate ? new Date(b.releaseDate).getTime() : 0;
+    
+    // If both have valid release dates and they differ, sort by timestamp
+    if (dateA && dateB && dateA !== dateB) {
+      return dateB - dateA;
+    }
+    
+    // Fallback to year comparison
     const ya = parseInt(getYear(a)) || 0;
     const yb = parseInt(getYear(b)) || 0;
     return yb - ya;

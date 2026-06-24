@@ -23,20 +23,86 @@ export function sanitizeCover(raw) {
   let parsed;
   try { parsed = new URL(url); } catch { return ""; }
   if (!/^https?:$/.test(parsed.protocol)) return "";
-  if (/google\.[a-z.]+\/search|\/search\?|wikipedia\.org\/wiki\//i.test(url)) return "";
+  const isWikipediaFileRedirect = /(^|\.)wikipedia\.org$/i.test(parsed.hostname)
+    && /^\/wiki\/Special:Redirect\/file\//i.test(parsed.pathname);
+  if (/google\.[a-z.]+\/search|\/search\?/i.test(url)) return "";
+  if (/wikipedia\.org\/wiki\//i.test(url) && !isWikipediaFileRedirect) return "";
 
   const path = parsed.pathname || "";
   const imageExt = /\.(jpe?g|png|webp|avif)$/i.test(path);
   const trustedImageHost = /(image\.tmdb\.org|cdn\.akamai\.steamstatic\.com|steamcdn-a\.akamaihd\.net|m\.media-amazon\.com|upload\.wikimedia\.org|images-na\.ssl-images-amazon\.com|\.googleusercontent\.com)$/i.test(parsed.hostname);
-  return imageExt || (trustedImageHost && path.length > 1) ? url : "";
+  return imageExt || isWikipediaFileRedirect || (trustedImageHost && path.length > 1) ? url : "";
 }
 
 function extractJson(text) {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fenced) return fenced[1].trim();
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  return start >= 0 && end > start ? text.slice(start, end + 1) : "";
+  const objectStart = text.indexOf("{");
+  const objectEnd = text.lastIndexOf("}");
+  const arrayMatch = /\[\s*[{[]/.exec(text);
+  const arrayStart = arrayMatch ? arrayMatch.index : -1;
+  const arrayEnd = text.lastIndexOf("]");
+  const objectJson = objectStart >= 0 && objectEnd > objectStart ? text.slice(objectStart, objectEnd + 1) : "";
+  const arrayJson = arrayStart >= 0 && arrayEnd > arrayStart ? text.slice(arrayStart, arrayEnd + 1) : "";
+  if (!arrayJson) return objectJson;
+  if (!objectJson) return arrayJson;
+  return arrayStart < objectStart ? arrayJson : objectJson;
+}
+
+export function wikipediaFileUrl(fileName, lang = "en") {
+  if (!fileName) return "";
+
+  const normalizedLang = String(lang || "en").trim().toLowerCase() || "en";
+  const clean = String(fileName)
+    .replace(/^File:/i, "")
+    .trim()
+    .replace(/\s+/g, "_");
+
+  if (!clean || !/\.(jpe?g|png|webp|avif|svg)$/i.test(clean)) return "";
+
+  return `https://${normalizedLang}.wikipedia.org/wiki/Special:Redirect/file/${encodeURIComponent(clean)}`;
+}
+
+export function canLoadImage(rawUrl) {
+  const url = sanitizeCover(rawUrl);
+  return new Promise((resolve) => {
+    if (!url) {
+      resolve(false);
+      return;
+    }
+
+    const img = new Image();
+    const timeout = window.setTimeout(() => {
+      img.onload = null;
+      img.onerror = null;
+      resolve(false);
+    }, 8000);
+
+    img.onload = () => {
+      window.clearTimeout(timeout);
+      resolve(true);
+    };
+
+    img.onerror = () => {
+      window.clearTimeout(timeout);
+      resolve(false);
+    };
+
+    img.src = url;
+  });
+}
+
+export async function resolveImportedCover(candidate) {
+  const directCover = candidate.cover || candidate.image || candidate.poster || "";
+  if (await canLoadImage(directCover)) return sanitizeCover(directCover);
+
+  const wikiCover = wikipediaFileUrl(candidate.wikipediaFile, candidate.wikipediaLang || "en");
+  if (await canLoadImage(wikiCover)) return wikiCover;
+
+  const alternateWikiCover = wikipediaFileUrl(candidate.wikimediaFile, candidate.wikipediaLang || "en");
+  if (await canLoadImage(alternateWikiCover)) return alternateWikiCover;
+
+  return "";
 }
 
 export function buildGoogleAiUrl({ title, type }) {
@@ -52,9 +118,10 @@ export function buildGoogleAiUrl({ title, type }) {
   const prompt = [
     `Find metadata for this ${mediaType}: "${title}".`,
     "Return one best match only as plain JSON with keys:",
-    `title, original_title, year, media_type, pillar,${extraFields} subcategory, score, cover, trailer, trailerUrl, source, confidence, reason.`,
+    `title, original_title, year, media_type, pillar,${extraFields} subcategory, score, cover, wikipediaFile, wikipediaLang, trailerUrl, source, confidence, reason.`,
     `pillar must be one of: ${pillars}.`,
-    "cover must be a directly-loadable HD HTTPS image URL ending in .jpg/.jpeg/.png/.webp. No markdown. JSON only."
+    "Prefer the English Wikipedia infobox image filename for wikipediaFile and set wikipediaLang to en.",
+    "Do not invent upload.wikimedia.org hash URLs. If cover is not a known direct URL, leave cover empty. No markdown. JSON only."
   ].join(" ");
   return `https://www.google.com/search?udm=50&q=${encodeURIComponent(prompt)}`;
 }
@@ -89,19 +156,18 @@ export function coerceResult(data, type) {
   const mapped = allowed.find((key) => rawPillar.includes(key))
     || Object.entries(pillarMap).find(([key, value]) => rawPillar.includes(key) && allowed.includes(value))?.[1]
     || allowed[type === "music" ? 2 : 0]; // music defaults to chill, others to first
-  const rawScore = data.score === "" || data.score == null ? null : Number(data.score);
-
   const base = {
     title: String(data.title || data.name || "Untitled").replace(/^\[([^\]]+)\]\([^)]+\)/, "$1").trim(),
     original_title: String(data.original_title || data.originalTitle || "").trim(),
-    year: String(data.year || "").trim(),
+    releaseDate: String(data.releaseDate || "").trim(),
     media_type: type === "games" ? "game" : type === "series" ? "series" : type === "music" ? "music" : "film",
     pillar: mapped,
     subcategory: String(data.subcategory || data.genre || data.type || "").trim(),
-    score: Number.isFinite(rawScore) ? rawScore : null,
+    score: null,
     cover: sanitizeCover(data.cover || data.poster || data.image || data.cover_url || data.poster_url),
-    trailer: String(data.trailer || data.trailerUrl || "").trim(),
-    trailerUrl: String(data.trailerUrl || data.trailer || "").trim(),
+    wikipediaFile: String(data.wikipediaFile || data.wikimediaFile || data.file || "").replace(/^File:/i, "").trim(),
+    wikipediaLang: String(data.wikipediaLang || data.lang || "en").trim().toLowerCase() || "en",
+    trailerUrl: String(data.trailerUrl || data.trailer || data.youtube || "").trim(),
     source: String(data.source || "AI search import").trim(),
     confidence: Math.max(0, Math.min(1, Number(data.confidence ?? 0.7))),
     reason: String(data.reason || data.note || "Imported metadata candidate.").trim(),
@@ -123,7 +189,10 @@ export function parseFreeform(text, { type }) {
   const raw = String(text || "").trim();
   if (!raw) throw new Error("Nothing to parse.");
   const jsonText = extractJson(raw);
-  if (jsonText) return coerceResult(JSON.parse(jsonText), type);
+  if (jsonText) {
+    const parsed = JSON.parse(jsonText);
+    return coerceResult(Array.isArray(parsed) ? parsed[0] || {} : parsed, type);
+  }
 
   const read = (labels) => {
     for (const label of labels) {
@@ -135,18 +204,19 @@ export function parseFreeform(text, { type }) {
   const title = read(["title", "name"]) || raw.split(/\r?\n/)[0].replace(/^#+\s*/, "").trim();
   const yearMatch = raw.match(/\b(19|20)\d{2}\b/);
   const scoreRaw = read(["score", "priority"]);
-  const trailer = read(["trailer", "trailerUrl", "youtube", "official trailer"]);
+  const trailerUrl = read(["trailerUrl", "trailer", "youtube", "official trailer"]);
 
   return coerceResult({
     title,
     original_title: read(["original_title", "original title"]),
-    year: yearMatch ? yearMatch[0] : read(["year"]),
+    releaseDate: yearMatch ? yearMatch[0] : read(["year"]),
     pillar: read(["pillar", "affect", "gameplay"]),
     subcategory: read(["subcategory", "genre", "type"]),
     score: scoreRaw ? Number(String(scoreRaw).replace(",", ".").match(/\d+(\.\d+)?/)?.[0]) : null,
     cover: read(["cover", "poster", "image", "poster url"]),
-    trailer,
-    trailerUrl: trailer,
+    wikipediaFile: read(["wikipediaFile", "wikimediaFile", "file", "wikipedia file", "wikimedia file"]),
+    wikipediaLang: read(["wikipediaLang", "lang", "wikipedia lang"]) || "en",
+    trailerUrl,
     source: read(["source"]) || "Google AI paste",
     confidence: 0.72,
     reason: read(["reason", "note"]) || "Parsed from pasted AI/search answer.",

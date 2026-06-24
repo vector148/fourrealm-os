@@ -82,11 +82,11 @@ function AppInner() {
     if (!window.confirm(`Add "${item.title}" to your library?`)) return;
     try {
       if (item.id && !item._wishlistOnly) {
-        await lib.update(item.id, { status: "active", score: null, complete: "" });
+        await lib.update(item.id, { status: "active", score: null, completionDate: "" });
       } else {
         await lib.create({
           title: item.title,
-          year: item.year || "",
+          releaseDate: item.releaseDate || "",
           gameplay: item.gameplay || item.affect || "Discovery",
           subcategory: item.subcategory || "",
           affect: item.affect || "",
@@ -172,7 +172,6 @@ function AppInner() {
         return <History {...shared} />;
       case "ranking":
         return <Ranking {...shared} />;
-
       default:
         return null;
     }
@@ -199,7 +198,9 @@ function AppInner() {
               <button
                 key={t.id}
                 className={`realm-tab-btn realm-tab-${t.id} ${tab === t.id ? "active" : ""}`}
-                onClick={() => switchTab(t.id)}
+                onClick={() => {
+                  switchTab(t.id);
+                }}
               >
                 <span className="realm-tab-icon">{t.icon}</span>
                 <span className="realm-tab-label">{t.label}</span>

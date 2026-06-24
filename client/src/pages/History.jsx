@@ -19,8 +19,8 @@ export default function History({ type, items, onUpdateItem, onDeleteItem }) {
     items
       .filter((i) => i.status === "completed" && i.score != null)
       .sort((a, b) => {
-        const da = a.date || a.complete || "";
-        const db = b.date || b.complete || "";
+        const da = a.date || a.completionDate || "";
+        const db = b.date || b.completionDate || "";
         return db.localeCompare(da);
       })
       .slice(0, 24),
@@ -84,7 +84,7 @@ export default function History({ type, items, onUpdateItem, onDeleteItem }) {
                   {item.title}
                   <small>
                     <span className={`pill ${pillColor}`} style={{ fontSize: 9, padding: "2px 7px" }}>{tax.label}</span>
-                    {" "}{getYear(item)}
+                    {" "}{getReleaseDate(item)}
                   </small>
                 </div>
                 <div className="rank-score">{fmt(item.score)}</div>

@@ -151,7 +151,7 @@ export default function AiImporter({ type, onImported }) {
     const finalCover = sanitizeCover(coverUrl) || "";
     const row = {
       title: pending.title,
-      year: pending.year || "",
+      releaseDate: pending.releaseDate || "",
       cover: finalCover,
       trailerUrl: pending.trailerUrl || "",
       source: pending.source || "AI import",
@@ -208,7 +208,7 @@ export default function AiImporter({ type, onImported }) {
           </div>
           <div className="confirm-body">
             <span className="confirm-type-tag">{TYPE_LABELS[aiType]}</span>
-            <div className="confirm-headline">{pending.title} <small>{pending.year || "-"}</small></div>
+            <div className="confirm-headline">{pending.title} <small>{pending.releaseDate || "-"}</small></div>
             <p className="confirm-reason">{pending.reason}</p>
             <span className="confirm-confidence">Confidence {Math.round((pending.confidence || 0) * 100)}%</span>
             <div className="confirm-cover-field">

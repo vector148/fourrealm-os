@@ -13,8 +13,8 @@ export default function DetailModal({ item, type, onClose, onDelete, onUpdate, o
   const [showDelete, setShowDelete] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
   const [editingPillar, setEditingPillar] = useState(false);
-  const [editingYear, setEditingYear] = useState(false);
-  const [yearVal, setYearVal] = useState("");
+  const [editingDate, setEditingDate] = useState(false);
+  const [dateVal, setDateVal] = useState("");
 
   if (!item) return null;
 
@@ -24,8 +24,8 @@ export default function DetailModal({ item, type, onClose, onDelete, onUpdate, o
   const stars = item.score != null ? toStars(item.score) : "-";
   const trailer = getTrailerInfo(item);
   const dateStr = isCompleted
-    ? item.complete || item.date || item.purchase || ""
-    : item.date || item.purchase || item.complete || "";
+    ? item.completionDate || item.date || item.purchase || ""
+    : item.date || item.purchase || item.completionDate || "";
   const statusStr = type === "music" ? "" : (item.status || "unknown").toUpperCase();
 
   function getUpdateEndpoint() {
@@ -92,21 +92,21 @@ export default function DetailModal({ item, type, onClose, onDelete, onUpdate, o
     setEditingScore(false);
   }
 
-  async function saveYear() {
-    const val = yearVal.trim();
+  async function saveDate() {
+    const val = dateVal.trim();
     if (!val) {
-      setEditingYear(false);
+      setEditingDate(false);
       return;
     }
     try {
       const endpoint = getUpdateEndpoint();
       const updated = await endpoint(item.id, { releaseDate: val });
       onUpdate?.(updated);
-      showToast("Year updated.");
+      showToast("Date updated.");
     } catch {
-      showToast("Failed to update year.");
+      showToast("Failed to update date.");
     }
-    setEditingYear(false);
+    setEditingDate(false);
   }
 
   function startCompletion() {
@@ -126,7 +126,7 @@ export default function DetailModal({ item, type, onClose, onDelete, onUpdate, o
     try {
       const endpoint = getUpdateEndpoint();
       const today = new Date().toISOString().slice(0, 10);
-      const updated = await endpoint(item.id, { status: "completed", score: n, complete: today });
+      const updated = await endpoint(item.id, { status: "completed", score: n, completionDate: today });
       onUpdate?.(updated);
       showToast(`Completed "${item.title}".`);
       setCompleting(false);
@@ -139,7 +139,7 @@ export default function DetailModal({ item, type, onClose, onDelete, onUpdate, o
     if (!window.confirm(`Cancel completion for "${item.title}"? This will remove the score you gave it.`)) return;
     try {
       const endpoint = getUpdateEndpoint();
-      const updated = await endpoint(item.id, { status: activeStatus, score: null, complete: "" });
+      const updated = await endpoint(item.id, { status: activeStatus, score: null, completionDate: "" });
       onUpdate?.(updated);
       showToast("Completion canceled. Score removed.");
       setEditingScore(false);
@@ -175,7 +175,7 @@ export default function DetailModal({ item, type, onClose, onDelete, onUpdate, o
         <div className="detail-hero">
           <div className="big-title">{item.title}</div>
           {(item.artist || item.creator) && <div className="sub" style={{ opacity: 0.7, fontSize: '0.9em', marginBottom: '8px' }}>{item.artist || item.creator}</div>}
-          {item.year && <div className="sub">{item.year}</div>}
+          {item.releaseDate && <div className="sub">{item.releaseDate}</div>}
           <div className="star-row">{stars}</div>
           {type !== "music" && (
             <div className="timeline">
@@ -274,29 +274,29 @@ export default function DetailModal({ item, type, onClose, onDelete, onUpdate, o
           ) : (
             <div className="cell">
               <div className="k">Release</div>
-              {editingYear ? (
+              {editingDate ? (
                 <div className="score-edit-row">
                   <input
                     className="score-input"
                     autoFocus
-                    value={yearVal}
-                    onChange={(e) => setYearVal(e.target.value)}
+                    value={dateVal}
+                    onChange={(e) => setDateVal(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") saveYear();
-                      if (e.key === "Escape") setEditingYear(false);
+                      if (e.key === "Enter") saveDate();
+                      if (e.key === "Escape") setEditingDate(false);
                     }}
-                    placeholder="Year"
+                    placeholder="YYYY-MM-DD"
                   />
-                  <button className="btn btn-sm btn-primary" type="button" onClick={saveYear}>OK</button>
+                  <button className="btn btn-sm btn-primary" type="button" onClick={saveDate}>OK</button>
                 </div>
               ) : (
                 <div 
                   className="v editable"
-                  onClick={() => { setEditingYear(true); setYearVal(item.releaseDate || item.year || ""); }}
-                  title="Edit release year"
+                  onClick={() => { setEditingDate(true); setDateVal(item.releaseDate || item.releaseDate || ""); }}
+                  title="Edit release date (YYYY-MM-DD)"
                   style={{ cursor: "pointer" }}
                 >
-                  {item.releaseDate || item.year || "-"} <span className="score-edit-hint">edit</span>
+                  {item.releaseDate || item.releaseDate || "-"} <span className="score-edit-hint">edit</span>
                 </div>
               )}
             </div>
