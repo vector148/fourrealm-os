@@ -102,38 +102,38 @@ Do NOT use Steam, PlayStation, Nintendo, TMDB, or any storefront URLs.
 
 ## How to fill data
 
-You have four options to fill the blank databases:
+### Option A — Use the built-in AI Assistant (Recommended)
 
-### Option A — Ask an AI (ChatGPT, Claude, Gemini)
+If you are using an AI-enabled IDE (like Antigravity, Cursor, or Codex), you can use the built-in skill:
 
-<details>
-<summary>Click to see prompts for AI (Copy & Paste)</summary>
-
-**For games.xlsx:**
-```text
-Generate 20 rows of data for a games database. Return as a JSON array. Each object must have exactly these keys:
-id (integer, sequential), title (string), originalTitle (string), year (integer), played (boolean), gameplay (Narrative/Action/Discovery/Mechanic), subcategory (string), score (0-10 or null), status (completed/playing/wishlist/dropped/upcoming), date (YYYY-MM-DD or ""), purchase (""), complete (""), rank (integer or null), cover (Wikimedia Commons or Wikipedia image URL only — NO storefronts), trailer (YouTube nocookie embed URL or ""), trailerUrl (YouTube watch URL or ""), source ("manual")
-Only return the JSON array, no markdown.
-```
-Paste the JSON into [jsoncsv.com](https://jsoncsv.com), convert to CSV, and paste into Excel.
-
-**For films.xlsx:**
-```text
-Generate 15 rows for a films database. Return as JSON array with exactly these keys:
-id (integer), title (string), year (integer), watched (boolean), affect (Drama/Exciting/Healing/Thriller), score (0-10 or null), status (completed/watching/wishlist/dropped), date (YYYY-MM-DD or ""), cover (Wikimedia Commons or Wikipedia image URL only — NO storefronts), trailer (""), trailerUrl (""), source ("manual")
-Only return the JSON array, no markdown.
-```
-</details>
+1. Type `/add-database-item` in the AI chat.
+2. Provide the name of the item (e.g., "Add the game Super Awesome Game").
+3. The AI will automatically search for the correct release date, genre, and metadata from safe public sources like Wikipedia, and directly write it to your database files.
 
 ---
 
-### Option B — Use an AI IDE directly
+### Option B — Ask an LLM (ChatGPT, Claude, Gemini)
 
-If you use **Cursor**, **Windsurf**, or **Kiro**, just open this project and ask:
+Copy this prompt and paste into any AI chat:
 
-> "Add 20 games to `database/games.xlsx` with real metadata. Use Wikimedia Commons/Wikipedia URLs for covers. NO storefront images."
+**For games.xlsx:**
+```
+Generate 20 rows of data for a games database.
+Return as a JSON array. Each object must have exactly these keys:
 
-The AI reads the file structure and writes data directly — no copy-paste needed.
+id (integer, sequential from 1), title (string), originalTitle (string),
+releaseDate (string YYYY-MM-DD), played (boolean), gameplay (one of: Narrative / Action / Discovery / Mechanic),
+subcategory (string, e.g. "Open World", "Puzzle", "JRPG"),
+score (number 0-10 or null if not played), status (one of: completed / playing / wishlist / dropped / upcoming),
+completionDate (string YYYY-MM-DD or ""), rank (integer or null),
+cover (Wikimedia Commons or Wikipedia image URL only — do NOT use Steam/TMDB/storefronts),
+trailer (YouTube nocookie embed URL or ""),
+trailerUrl (YouTube watch URL or ""), source ("manual")
+
+Only return the JSON array, no markdown.
+```
+
+Paste the JSON response into [jsoncsv.com](https://jsoncsv.com) to convert to CSV, then paste into Excel and save.
 
 ---
 
@@ -148,7 +148,7 @@ Open `database/games.xlsx` in Excel or Google Sheets, add rows below the header,
 ```bash
 curl -X POST http://localhost:3001/api/games \
   -H "Content-Type: application/json" \
-  -d '{"title":"Super Awesome Game","year":2017,"gameplay":"Action","score":9.1,"status":"completed","cover":"https://example.com/cover.webp"}'
+  -d '{"title":"Super Awesome Game","releaseDate":"2024-01-01","gameplay":"Action","score":9.1,"status":"completed","cover":"https://upload.wikimedia.org/wikipedia/commons/a/ac/No_image_available.svg"}'
 ```
 
 ---
@@ -162,13 +162,13 @@ curl -X POST http://localhost:3001/api/games \
 | id | integer | 1, 2, 3… |
 | title | string | Display title |
 | originalTitle | string | Original language title |
-| year | integer | Release year |
+| releaseDate | string | Release date (YYYY-MM-DD) |
 | played | boolean | true / false |
 | gameplay | string | Narrative / Action / Discovery / Mechanic |
 | subcategory | string | Open World, Puzzle, JRPG, etc. |
 | score | number\|null | 0–10 or empty |
 | status | string | completed / playing / wishlist / dropped / upcoming |
-| date | string | YYYY-MM-DD |
+| completionDate | string | YYYY-MM-DD |
 | cover | string | Direct image URL |
 | trailer | string | YouTube nocookie embed URL |
 | trailerUrl | string | YouTube watch URL |
@@ -180,20 +180,16 @@ curl -X POST http://localhost:3001/api/games \
 |--------|------|--------|
 | id | integer | 1, 2, 3… |
 | title | string | Display title |
-| year | integer | Release year |
+| releaseDate | string | Release date (YYYY-MM-DD) |
 | watched | boolean | true / false |
 | affect | string | Drama / Exciting / Healing / Thriller |
 | score | number\|null | 0–10 or empty |
 | status | string | completed / watching / wishlist / dropped |
-| date | string | YYYY-MM-DD |
+| completionDate | string | YYYY-MM-DD |
 | cover | string | Direct image URL |
 | trailer | string | YouTube embed URL |
 | trailerUrl | string | YouTube watch URL |
-| source | string | |
-
----
-
-## API reference
+| source | string | |\n\n---\n\n## API reference
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
